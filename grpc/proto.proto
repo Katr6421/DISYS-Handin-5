@@ -33,3 +33,32 @@ service TimeAsk {
   rpc ConnectToServer(ClientConnectMessage) returns (stream MessageStreamConnection);
 }
 
+service Auction {
+  rpc Bid(Amount) returns (ConfirmationOfBid);
+  rpc Result(Request) returns (AuctionStatus);
+}
+
+message Amount {
+  int32 ClientId = 1;
+  int32 Bid = 2;
+  int32 LamportTimestamp = 3;
+}
+
+message ConfirmationOfBid {
+  int32 ClientId = 1; //for at huske hvem skal have beskeden
+  string ConfirmationMsg = 2;
+  int32 LamportTimestamp = 3; //måske?
+}
+
+message Request {
+  int32 ClientId = 1;
+  int32 LamportTimestamp = 2;
+}
+
+message AuctionStatus {
+  int32 ClientId = 1;
+  int32 LamportTimestamp = 2; //måske?
+  string StatusMsg = 3;
+}
+
+

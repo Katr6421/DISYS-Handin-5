@@ -167,3 +167,125 @@ var TimeAsk_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "grpc/proto.proto",
 }
+
+// AuctionClient is the client API for Auction service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type AuctionClient interface {
+	Bid(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*ConfirmationOfBid, error)
+	Result(ctx context.Context, in *Request, opts ...grpc.CallOption) (*AuctionStatus, error)
+}
+
+type auctionClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewAuctionClient(cc grpc.ClientConnInterface) AuctionClient {
+	return &auctionClient{cc}
+}
+
+func (c *auctionClient) Bid(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*ConfirmationOfBid, error) {
+	out := new(ConfirmationOfBid)
+	err := c.cc.Invoke(ctx, "/simpleGuide.Auction/Bid", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionClient) Result(ctx context.Context, in *Request, opts ...grpc.CallOption) (*AuctionStatus, error) {
+	out := new(AuctionStatus)
+	err := c.cc.Invoke(ctx, "/simpleGuide.Auction/Result", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// AuctionServer is the server API for Auction service.
+// All implementations must embed UnimplementedAuctionServer
+// for forward compatibility
+type AuctionServer interface {
+	Bid(context.Context, *Amount) (*ConfirmationOfBid, error)
+	Result(context.Context, *Request) (*AuctionStatus, error)
+	mustEmbedUnimplementedAuctionServer()
+}
+
+// UnimplementedAuctionServer must be embedded to have forward compatible implementations.
+type UnimplementedAuctionServer struct {
+}
+
+func (UnimplementedAuctionServer) Bid(context.Context, *Amount) (*ConfirmationOfBid, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Bid not implemented")
+}
+func (UnimplementedAuctionServer) Result(context.Context, *Request) (*AuctionStatus, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
+}
+func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
+
+// UnsafeAuctionServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuctionServer will
+// result in compilation errors.
+type UnsafeAuctionServer interface {
+	mustEmbedUnimplementedAuctionServer()
+}
+
+func RegisterAuctionServer(s grpc.ServiceRegistrar, srv AuctionServer) {
+	s.RegisterService(&Auction_ServiceDesc, srv)
+}
+
+func _Auction_Bid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Amount)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).Bid(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/simpleGuide.Auction/Bid",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).Bid(ctx, req.(*Amount))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auction_Result_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Request)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).Result(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/simpleGuide.Auction/Result",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).Result(ctx, req.(*Request))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Auction_ServiceDesc is the grpc.ServiceDesc for Auction service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Auction_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "simpleGuide.Auction",
+	HandlerType: (*AuctionServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Bid",
+			Handler:    _Auction_Bid_Handler,
+		},
+		{
+			MethodName: "Result",
+			Handler:    _Auction_Result_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "grpc/proto.proto",
+}
