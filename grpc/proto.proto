@@ -36,6 +36,7 @@ service TimeAsk {
 service Auction {
   rpc Bid(Amount) returns (ConfirmationOfBid);
   rpc Result(Request) returns (AuctionStatus);
+  rpc Heartbeat(SendHeartbeat) returns (Response);
 }
 
 message Amount {
@@ -53,6 +54,7 @@ message ConfirmationOfBid {
 message Request {
   int32 ClientId = 1;
   int32 LamportTimestamp = 2;
+  string msg = 3;
 }
 
 message AuctionStatus {
@@ -61,4 +63,12 @@ message AuctionStatus {
   string StatusMsg = 3;
 }
 
+message SendHeartbeat {
+  int32 ServerID = 1;
+}
+
+message Response {
+  int32 Ack = 1;
+  int32 ServerID = 2;
+}
 

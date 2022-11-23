@@ -1,12 +1,12 @@
 package main
 
 import (
-	"io"
 	"bufio"
 	"context"
 	"flag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"io"
 	"log"
 	"os"
 	proto "simpleGuide/grpc"
@@ -14,37 +14,37 @@ import (
 )
 
 type Client struct {
-	id         				int
-	LamportTimestamp 		int64
-	stream 					*proto.TimeAsk_ConnectToServerClient
+	id               int
+	LamportTimestamp int64
+	stream           *proto.TimeAsk_ConnectToServerClient
 }
 
 // go run . -name Hannah. Command to connect to server via a chosen name.
 var (
-	name = flag.String("name", "<name>", "Name of this participant")
-	serverPort = flag.Int("sPort", 5454, "server port number (should match the port used for the server)")
+	name       = flag.String("name", "<name>", "Name of this participant")
+	serverPort = flag.Int("sPort", 8080, "server port number (should match the port used for the server)")
 )
 
 func main() {
 	// Parse the flags to get the port for the client
 	flag.Parse()
 
-
 	// Connect to the server
 	serverConnection, _ := connectToServer()
-	stream, err := serverConnection.ConnectToServer(context.Background(), &proto.ClientConnectMessage {
-		Name: *name,
+	stream, err := serverConnection.ConnectToServer(context.Background(), &proto.ClientConnectMessage{
+		Name:     *name,
 		ClientId: int64(os.Getpid()),
 	})
 	if err != nil {
 		log.Fatalf("Connection failed")
 	}
+	log.Printf("Connection established")
 
 	// Create a client
-	client := &Client {
-		id:         		1,
-		LamportTimestamp: 	0,
-		stream: 			&stream,
+	client := &Client{
+		id:               1,
+		LamportTimestamp: 0,
+		stream:           &stream,
 	}
 
 	go client.listenForMessages()
@@ -57,10 +57,10 @@ func main() {
 
 		// Increase the Lamport time and send message to Server
 		client.LamportTimestamp += 1
-		serverConnection.SendMessage(context.Background(), &proto.ClientPublishMessage {
-			ClientId: 			int64(os.Getpid()),
-			Message: 			input,
-			LamportTimestamp: 	client.LamportTimestamp,
+		serverConnection.SendMessage(context.Background(), &proto.ClientPublishMessage{
+			ClientId:         int64(os.Getpid()),
+			Message:          input,
+			LamportTimestamp: client.LamportTimestamp,
 		})
 	}
 }
@@ -93,7 +93,7 @@ func (c *Client) listenForMessages() {
 		} else {
 			c.LamportTimestamp += 1
 		}
-		
+
 		//"%v" print as a string
 		log.Printf("Client has received message '%s' at Client Lamport time %d", msg.StreamMessage, c.LamportTimestamp)
 	}

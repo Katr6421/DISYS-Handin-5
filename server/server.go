@@ -2,31 +2,37 @@ package main
 
 import (
 	"context"
+	"time"
+
+	//"database/sql/driver"
 	"flag"
+	"fmt"
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"os"
 	proto "simpleGuide/grpc"
 	"strconv"
-	"time"
-	"fmt"
 )
 
-//Struct for the Server to store to keep track of the clients
+// Struct for the Server to store to keep track of the clients
 type ClientStream struct {
-	name string
+	name     string
 	clientID int
-	stream *proto.TimeAsk_ConnectToServerServer
-	chQuit chan int
+	stream   *proto.TimeAsk_ConnectToServerServer
+	chQuit   chan int
 }
 
 // Struct that will be used to represent the Server.
 type Server struct {
-	proto.UnimplementedTimeAskServer // Necessary
-	name                             string
-	port                             int
+	proto.UnimplementedAuctionServer // Necessary
+	id                               int32
 	clients                          []*ClientStream
-	LamportTimestamp                 int64
+	servers                          map[int32]proto.AuctionClient
+	ctx                              context.Context
+	isLeader                         bool
+	isDead                           bool
+	chDeadOrAlive                    chan int32
 }
 
 // Sets the serverport to 5454
@@ -34,18 +40,23 @@ var port = flag.Int("port", 5454, "server port number")
 
 func main() {
 	// This parses the flag and sets the correct/given corresponding values.
-	flag.Parse()
+	//flag.Parse()
+
+	arg1, _ := strconv.ParseInt(os.Args[1], 10, 32)
+	ownPort := int32(arg1) + 8080
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Create a server struct
-	server := &Server {
-		name: "serverName",
-		port: *port,
+	server := &Server{
+		id:      ownPort,
 		clients: []*ClientStream{},
-		LamportTimestamp: 1,
+		servers: make(map[int32]proto.AuctionClient),
+		ctx:     ctx,
 	}
 
 	// Start the server
-	go startServer(server)
+	go startServer(server, ownPort)
 
 	// Keep the server running until it is manually quit
 	for {
@@ -53,26 +64,111 @@ func main() {
 	}
 }
 
-func startServer(server *Server) {
+func startServer(server *Server, ownPort int32) {
 
-	// Create a new grpc server
+	// Create listener tcp on port ownPort
+	list, err := net.Listen("tcp", fmt.Sprintf(":%v", ownPort))
+	if err != nil {
+		log.Fatalf("Failed to listen on port: %v", err)
+	}
+	log.Printf("Started server at port: %d\n", server.id)
+
 	grpcServer := grpc.NewServer()
 
-	// Make the server listen at the given port (convert int port to string)
-	listener, err := net.Listen("tcp", ":"+strconv.Itoa(server.port))
-	if err != nil {
-		log.Fatalf("Could not create the server %v", err)
-	}
-	log.Printf("Started server at port: %d\n", server.port)
-
 	// Register the grpc server and serve its listener
-	proto.RegisterTimeAskServer(grpcServer, server)
-	serveError := grpcServer.Serve(listener)
-	if serveError != nil {
-		log.Fatalf("Could not serve listener")
+	proto.RegisterAuctionServer(grpcServer, server)
+
+	go func() {
+		if err := grpcServer.Serve(list); err != nil {
+			log.Fatalf("failed to server %v", err)
+		}
+	}()
+
+	// Dials three servers
+	for i := 0; i < 3; i++ {
+		port := int32(8080) + int32(i)
+
+		if port == ownPort {
+			continue
+		}
+
+		var conn *grpc.ClientConn
+		fmt.Printf("Trying to dial: %v\n", port)
+		conn, err := grpc.Dial(fmt.Sprintf(":%v", port), grpc.WithInsecure(), grpc.WithBlock())
+		if err != nil {
+			log.Fatalf("Could not connect: %s", err)
+		}
+		defer conn.Close()
+		c := proto.NewAuctionClient(conn)
+		server.servers[port] = c
+		log.Printf("Connected to server: %v\n", port)
+	}
+	if server.id == 8080 {
+		server.isLeader = true
+	}
+
+	if server.isLeader {
+		for {
+			go server.SendingHeartbeat()
+			time.Sleep(3 * time.Second)
+
+			//tjekker channel
+			if len(server.chDeadOrAlive) == len(server.servers) {
+				//leaderen er død
+				//elect ny leader
+			}
+
+		}
+	}
+
+	if !server.isLeader {
+		time.Sleep(5 * time.Second)
+		log.Printf("hej")
+		//if bipbip.isDead == true {
+		//election
+		//}
+
+	}
+	//server på index 0 - kalder Heartbeat for X sek
+	//servers på index 1++ - kalder Response hvert x sek
+	//sæt if statement på hvis de andre servers venter for længe -> vælg ny leader
+	////den nye leder er index 0+1 og resten er så fra index 1+1
+
+}
+
+func (s *Server) SendingHeartbeat() {
+	BipBip := &proto.SendHeartbeat{
+		ServerID: s.id,
+	}
+
+	log.Printf("Primary sends heartbeat, %d", s.id)
+	for _, server := range s.servers {
+		response, err := server.Heartbeat(s.ctx, BipBip)
+		if err != nil {
+			log.Fatalf("Something went wrong, %v", err)
+		}
+		log.Printf("Reponsen leaderen %d fik var: %d fra %d", s.id, response.Ack, response.ServerID)
+		if response.Ack == 1 {
+			//alt er ok
+			s.chDeadOrAlive <- response.ServerID
+			//en tanke var at tjekke om channel er fuld/tom -> så er leader død
+		}
 	}
 }
 
+func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*proto.Response, error) {
+	//når de modtager et heartbeat
+
+	ack := &proto.Response{
+		Ack:      1,
+		ServerID: s.id, //id på den backup server der svarer
+	}
+
+	log.Printf("Backup %d sends ack to heartbeat", s.id)
+	return ack, nil
+}
+
+/*
 func (s *Server) SendMessage(ctx context.Context, msg *proto.ClientPublishMessage) (*proto.ServerPublishMessageOk, error) {
 	//update LamportTime. compare Servers' time and the time for the msg we received
 	if msg.LamportTimestamp > s.LamportTimestamp {
@@ -87,13 +183,13 @@ func (s *Server) SendMessage(ctx context.Context, msg *proto.ClientPublishMessag
 			if msg.ClientId == int64(client.clientID) {
 				//removes the client who quited - the same as pop. '...' means we want to add to our array
 				s.clients = append(s.clients[:i], s.clients[i+1:]...)
-				
+
 				if len(s.clients) < 2 {
 					log.Printf("There is %d client connected", len(s.clients))
 				} else {
 					log.Printf("There are %d clients connected", len(s.clients))
 				}
-				
+
 				//sends a message that we want to break the connection to the server
 				client.chQuit <- 0
 				s.SendToAllClients(fmt.Sprintf("Participant %s left Chitty-Chat at Server Lamport time %d", client.name, s.LamportTimestamp))
@@ -108,25 +204,24 @@ func (s *Server) SendMessage(ctx context.Context, msg *proto.ClientPublishMessag
 		Time:       time.Now().String(),
 		ServerName: s.name,
 	}, nil
-}
-
-
+}*/
+/*
 func (s *Server) SendToAllClients(msg string) {
 	//for each client send them a stream of message
 	//_, _ = ignorerer variablerne i metoden
 	for _, client := range s.clients {
 		log.Printf("Sending the message to participant %s with id: %d\n", client.name, client.clientID)
-		(*client.stream).Send(&proto.MessageStreamConnection {
-			StreamMessage: msg,
+		(*client.stream).Send(&proto.MessageStreamConnection{
+			StreamMessage:    msg,
 			LamportTimestamp: s.LamportTimestamp,
 		})
 	}
-}
+}*/
 
+/*
 func (s *Server) ConnectToServer(msg *proto.ClientConnectMessage, stream proto.TimeAsk_ConnectToServerServer) error {
-	s.LamportTimestamp += 1
 	log.Printf("%s connected to the server at Lamport time %d\n", msg.Name, s.LamportTimestamp)
-	
+
 	clientStream := &ClientStream {
 		name: msg.Name,
 		clientID: int(msg.ClientId),
@@ -145,12 +240,19 @@ func (s *Server) ConnectToServer(msg *proto.ClientConnectMessage, stream proto.T
 	} else {
 		log.Printf("There are %d clients connected", len(s.clients))
 	}
-	
+
 	//as long as there is no message, the channel will stay open
 	<-clientStream.chQuit
 
 	return nil
+}*/
+
+func (s *Server) Bid(ctx context.Context, amount *proto.Amount) (*proto.ConfirmationOfBid, error) {
+	//TODO implement me
+	panic(recover())
 }
 
-
-
+func (s *Server) Result(ctx context.Context, request *proto.Request) (*proto.AuctionStatus, error) {
+	//TODO implement me
+	panic(recover())
+}
