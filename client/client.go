@@ -26,6 +26,22 @@ var (
 )
 
 func main() {
+	// Log to custom file
+	LOG_FILE := "../custom.log"
+	// Open log file - or create it, if it doesn't exist
+	logFile, err := os.OpenFile(LOG_FILE, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer logFile.Close()
+		
+	// Set log out put
+	log.SetOutput(logFile)
+
+	// Log date-time and filename
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
+	
+
 	// Parse the flags to get the port for the client
 	flag.Parse()
 

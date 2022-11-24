@@ -38,7 +38,23 @@ type Server struct {
 // Sets the serverport to 5454
 var port = flag.Int("port", 5454, "server port number")
 
+
 func main() {
+	// Log to custom file
+	LOG_FILE := "../custom.log"
+	// Open log file - or create it, if it doesn't exist
+	logFile, err := os.OpenFile(LOG_FILE, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		log.Panic(err)
+	}
+	defer logFile.Close()
+
+	// Set log out put
+	log.SetOutput(logFile)
+
+	// Log date-time and filename
+	log.SetFlags(log.Lshortfile | log.LstdFlags)
+
 	// This parses the flag and sets the correct/given corresponding values.
 	//flag.Parse()
 
@@ -110,7 +126,7 @@ func startServer(server *Server, ownPort int32) {
 	if server.isLeader {
 		for {
 			go server.SendingHeartbeat()
-			time.Sleep(3 * time.Second)
+			time.Sleep(15 * time.Second) // får kun nogengange svar fra 8002, ligegyldigt hvad man sætter timeout til 
 
 			//tjekker channel
 			if len(server.chDeadOrAlive) == len(server.servers) {
@@ -121,14 +137,14 @@ func startServer(server *Server, ownPort int32) {
 		}
 	}
 
-	if !server.isLeader {
-		time.Sleep(5 * time.Second)
-		log.Printf("hej")
+	//if !server.isLeader {
+	//	time.Sleep(30 * time.Second)
+	////	log.Printf("hej")
 		//if bipbip.isDead == true {
 		//election
 		//}
 
-	}
+	//}
 	//server på index 0 - kalder Heartbeat for X sek
 	//servers på index 1++ - kalder Response hvert x sek
 	//sæt if statement på hvis de andre servers venter for længe -> vælg ny leader
@@ -141,16 +157,17 @@ func (s *Server) SendingHeartbeat() {
 		ServerID: s.id,
 	}
 
-	log.Printf("Primary sends heartbeat, %d", s.id)
+	log.Printf(" !!! Primary replica %d sends heartbeat to all backup replicas !!!", s.id)
 	for _, server := range s.servers {
 		response, err := server.Heartbeat(s.ctx, BipBip)
 		if err != nil {
-			log.Fatalf("Something went wrong, %v", err)
+			log.Printf("Something went wrong, %v", err)
+			//log.Printf("Backup replica %d did not respond", response.ServerID)
 		}
-		log.Printf("Reponsen leaderen %d fik var: %d fra %d", s.id, response.Ack, response.ServerID)
+		log.Printf("Primary replica %d got the response: %d from backup replica %d", s.id, response.Ack, response.ServerID)
 		if response.Ack == 1 {
 			//alt er ok
-			s.chDeadOrAlive <- response.ServerID
+			//s.chDeadOrAlive <- response.ServerID
 			//en tanke var at tjekke om channel er fuld/tom -> så er leader død
 		}
 	}
@@ -164,7 +181,7 @@ func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*p
 		ServerID: s.id, //id på den backup server der svarer
 	}
 
-	log.Printf("Backup %d sends ack to heartbeat", s.id)
+	log.Printf("Backup replica %d sends ack to heartbeat", s.id)
 	return ack, nil
 }
 
