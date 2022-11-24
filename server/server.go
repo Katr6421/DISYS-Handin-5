@@ -31,13 +31,14 @@ type Server struct {
 	servers                          map[int32]proto.AuctionClient
 	ctx                              context.Context
 	isLeader                         bool
-	isDead                           bool
-	chDeadOrAlive                    chan int32
+	//isDead                           bool
+	//chDeadOrAlive                    chan int32
 }
 
 // Sets the serverport to 5454
 var port = flag.Int("port", 5454, "server port number")
 
+var Leader int
 
 func main() {
 	// Log to custom file
@@ -49,11 +50,12 @@ func main() {
 	}
 	defer logFile.Close()
 
-	// Set log out put
+	// Set log output
 	log.SetOutput(logFile)
 
 	// Log date-time and filename
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
+
 
 	// This parses the flag and sets the correct/given corresponding values.
 	//flag.Parse()
@@ -122,6 +124,7 @@ func startServer(server *Server, ownPort int32) {
 
 	if server.id == 8080 {
 		server.isLeader = true // Primary replica is 8080 by default 
+		Leader = 8080
 	}
 
 	if server.isLeader {
@@ -138,10 +141,10 @@ func startServer(server *Server, ownPort int32) {
 
 
 			//tjekker channel
-			if len(server.chDeadOrAlive) == len(server.servers) {
+			//if len(server.chDeadOrAlive) == len(server.servers) {
 				//leaderen er død
 				//elect ny leader
-			}
+			//}
 
 		}
 	}
@@ -212,88 +215,25 @@ func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*p
 	return ack, nil
 }
 
-/*
-func (s *Server) SendMessage(ctx context.Context, msg *proto.ClientPublishMessage) (*proto.ServerPublishMessageOk, error) {
-	//update LamportTime. compare Servers' time and the time for the msg we received
-	if msg.LamportTimestamp > s.LamportTimestamp {
-		s.LamportTimestamp = msg.LamportTimestamp + 1
-	} else {
-		s.LamportTimestamp += 1
-	}
-	log.Printf("Received a message from participant %d at Lamport time %d\n", msg.ClientId, s.LamportTimestamp)
-
-	if msg.Message == "quit" {
-		for i, client := range s.clients {
-			if msg.ClientId == int64(client.clientID) {
-				//removes the client who quited - the same as pop. '...' means we want to add to our array
-				s.clients = append(s.clients[:i], s.clients[i+1:]...)
-
-				if len(s.clients) < 2 {
-					log.Printf("There is %d client connected", len(s.clients))
-				} else {
-					log.Printf("There are %d clients connected", len(s.clients))
-				}
-
-				//sends a message that we want to break the connection to the server
-				client.chQuit <- 0
-				s.SendToAllClients(fmt.Sprintf("Participant %s left Chitty-Chat at Server Lamport time %d", client.name, s.LamportTimestamp))
-				break
-			}
-		}
-	} else {
-		s.SendToAllClients(msg.Message)
-	}
-
-	return &proto.ServerPublishMessageOk{
-		Time:       time.Now().String(),
-		ServerName: s.name,
-	}, nil
-}*/
-/*
-func (s *Server) SendToAllClients(msg string) {
-	//for each client send them a stream of message
-	//_, _ = ignorerer variablerne i metoden
-	for _, client := range s.clients {
-		log.Printf("Sending the message to participant %s with id: %d\n", client.name, client.clientID)
-		(*client.stream).Send(&proto.MessageStreamConnection{
-			StreamMessage:    msg,
-			LamportTimestamp: s.LamportTimestamp,
-		})
-	}
-}*/
-
-/*
-func (s *Server) ConnectToServer(msg *proto.ClientConnectMessage, stream proto.TimeAsk_ConnectToServerServer) error {
-	log.Printf("%s connected to the server at Lamport time %d\n", msg.Name, s.LamportTimestamp)
-
-	clientStream := &ClientStream {
-		name: msg.Name,
-		clientID: int(msg.ClientId),
-		stream: &stream,
-		chQuit: make(chan int),
-	}
-
-	//saves the clients/participants that are connected to the Server
-	s.clients = append(s.clients, clientStream)
-
-	//sends message to all the connected clients
-	s.SendToAllClients(fmt.Sprintf("Participant %s joined Chitty-Chat at Server Lamport time %d", msg.Name, s.LamportTimestamp))
-
-	if len(s.clients) < 2 {
-		log.Printf("There is %d client connected", len(s.clients))
-	} else {
-		log.Printf("There are %d clients connected", len(s.clients))
-	}
-
-	//as long as there is no message, the channel will stay open
-	<-clientStream.chQuit
-
-	return nil
-}*/
-
 func (s *Server) Bid(ctx context.Context, amount *proto.Amount) (*proto.ConfirmationOfBid, error) {
 	//TODO implement me
-	panic(recover())
+	log.Printf("Client with ID %d made bid: %d kr\n", amount.ClientId, amount.Bid)
+	
+	//if bid is highest
+	return &proto.ConfirmationOfBid{
+		ServerId: 	s.id, 
+		ConfirmationMsg:  "Your bid is now the highest bid",
+		LamportTimestamp: 1, // måske?
+	}, nil
+
+	//if bid is not highest
+		// return a state
+
+	// if error
+		// return a state
+
+
+	// tell the other replicas the change
 }
 
 func (s *Server) Result(ctx context.Context, request *proto.Request) (*proto.AuctionStatus, error) {

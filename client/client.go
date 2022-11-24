@@ -6,7 +6,7 @@ import (
 	"flag"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"io"
+	//"io"
 	"log"
 	"os"
 	proto "simpleGuide/grpc"
@@ -15,8 +15,8 @@ import (
 
 type Client struct {
 	id               int
-	LamportTimestamp int64
-	stream           *proto.TimeAsk_ConnectToServerClient
+	name 			 string
+	//stream           *proto.TimeAsk_ConnectToServerClient
 }
 
 // go run . -name Hannah. Command to connect to server via a chosen name.
@@ -35,7 +35,7 @@ func main() {
 	}
 	defer logFile.Close()
 		
-	// Set log out put
+	// Set log output
 	log.SetOutput(logFile)
 
 	// Log date-time and filename
@@ -45,72 +45,62 @@ func main() {
 	// Parse the flags to get the port for the client
 	flag.Parse()
 
-	// Connect to the server
-	serverConnection, _ := connectToServer()
-	stream, err := serverConnection.ConnectToServer(context.Background(), &proto.ClientConnectMessage{
-		Name:     *name,
-		ClientId: int64(os.Getpid()),
-	})
-	if err != nil {
-		log.Fatalf("Connection failed")
-	}
-	log.Printf("Connection established")
-
+	
 	// Create a client
 	client := &Client{
-		id:               1,
-		LamportTimestamp: 0,
-		stream:           &stream,
+		id:         1,
+		name:       *name,
 	}
 
-	go client.listenForMessages()
 
-	// Wait for input in the client terminal
+	go waitForBid(client)
+
+	for{
+
+	}
+
+}
+
+func waitForBid(client *Client){
+	serverConnection, _ := connectToServer(client)
+
+	// Wait for bid in the client terminal
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		input := scanner.Text()
-		log.Printf("Client wants to send a message: %s\n", input)
 
-		// Increase the Lamport time and send message to Server
-		client.LamportTimestamp += 1
-		serverConnection.SendMessage(context.Background(), &proto.ClientPublishMessage{
-			ClientId:         int64(os.Getpid()),
-			Message:          input,
-			LamportTimestamp: client.LamportTimestamp,
+		// Check if inout is an integer and convert
+		bid, err := strconv.Atoi(input)
+		if err != nil {
+			log.Printf("%v is not a valid input. Please write a number", input)
+		}
+		if err == nil {
+		log.Printf("Client %d made bid: %v\n", client.id, input)
+
+		// Ask the server for the time
+		bidReturnMessage, err := serverConnection.Bid(context.Background(), &proto.Amount{
+			ClientId: int32(client.id),
+			Bid: 	  int32(bid),
 		})
+
+		if err != nil {
+			log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges
+		} else {
+			log.Printf("Server %v confirms with message: %s\n", bidReturnMessage.ServerId, bidReturnMessage.ConfirmationMsg)
+		}
 	}
+	}
+
 }
 
-func connectToServer() (proto.TimeAskClient, error) {
+
+func connectToServer(client *Client) (proto.AuctionClient, error) {
 	// Dial the server at the specified port.
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(*serverPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("Could not connect to port %d", *serverPort)
+		log.Fatalf("Client %d could not connect to port %d", client.id, *serverPort)
 	} else {
-		log.Printf("Connected to the server at port %d\n", *serverPort)
+		log.Printf("Client %d connected to the server at port %d\n", client.id, *serverPort)
 	}
-	return proto.NewTimeAskClient(conn), nil
-}
-
-func (c *Client) listenForMessages() {
-	//while loop runs forever
-	for {
-		//if the client sent 'quit', this will close the connection
-		msg, err := (*c.stream).Recv()
-		if err == io.EOF {
-			log.Fatalf("Closed connection to server")
-		}
-		if err != nil {
-			log.Fatalf("There was some error: %v", err)
-		}
-
-		if msg.LamportTimestamp > c.LamportTimestamp {
-			c.LamportTimestamp = msg.LamportTimestamp + 1
-		} else {
-			c.LamportTimestamp += 1
-		}
-
-		//"%v" print as a string
-		log.Printf("Client has received message '%s' at Client Lamport time %d", msg.StreamMessage, c.LamportTimestamp)
-	}
+	return proto.NewAuctionClient(conn), nil
 }

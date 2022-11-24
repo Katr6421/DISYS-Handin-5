@@ -46,7 +46,7 @@ message Amount {
 }
 
 message ConfirmationOfBid {
-  int32 ClientId = 1; //for at huske hvem skal have beskeden
+  int32 ServerId = 1; //for at huske hvem skal have beskeden
   string ConfirmationMsg = 2;
   int32 LamportTimestamp = 3; //måske?
 }
