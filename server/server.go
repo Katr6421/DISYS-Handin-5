@@ -119,14 +119,23 @@ func startServer(server *Server, ownPort int32) {
 		server.servers[port] = c
 		log.Printf("Connected to server: %v\n", port)
 	}
+
 	if server.id == 8080 {
-		server.isLeader = true
+		server.isLeader = true // Primary replica is 8080 by default 
 	}
 
 	if server.isLeader {
 		for {
-			go server.SendingHeartbeat()
-			time.Sleep(15 * time.Second) // får kun nogengange svar fra 8002, ligegyldigt hvad man sætter timeout til 
+			err, failingServerId := server.SendingHeartbeat()
+
+			// If SendingHeartbeat returns an error, it means one of the backup replicas didn't respond
+			if err != nil{
+				log.Printf("Primary replica didn't get a response from backup replica %d. This backup replica will be removed", failingServerId)
+				delete(server.servers, failingServerId) // Removes non-responding replica from map of connected servers
+			}
+
+			time.Sleep(15 * time.Second)  
+
 
 			//tjekker channel
 			if len(server.chDeadOrAlive) == len(server.servers) {
@@ -152,25 +161,43 @@ func startServer(server *Server, ownPort int32) {
 
 }
 
-func (s *Server) SendingHeartbeat() {
+func (s *Server) SendingHeartbeat() (Error error, failingServerId int32) {
+
+	var requiredResponses int = 2; // Number of responses if all backups responds
+	var numberOfResponses int = 0; 
+	var nonRespondingReplica int32 = 0; 
+	var error error = nil; 
+
 	BipBip := &proto.SendHeartbeat{
 		ServerID: s.id,
 	}
 
 	log.Printf(" !!! Primary replica %d sends heartbeat to all backup replicas !!!", s.id)
-	for _, server := range s.servers {
-		response, err := server.Heartbeat(s.ctx, BipBip)
+	
+	for id, server := range s.servers {
+		response, err := server.Heartbeat(s.ctx, BipBip) 
+
+		// If Heartbeat() returns an error, the backup replica didn't respond
 		if err != nil {
-			log.Printf("Something went wrong, %v", err)
-			//log.Printf("Backup replica %d did not respond", response.ServerID)
+			error = err; 
+			nonRespondingReplica = id; 
+			requiredResponses--; // Non-responding replica will be removed, so required responses is one lower
 		}
+
+		// Backup replica responded
+		if err == nil {
+		numberOfResponses++;
 		log.Printf("Primary replica %d got the response: %d from backup replica %d", s.id, response.Ack, response.ServerID)
-		if response.Ack == 1 {
-			//alt er ok
-			//s.chDeadOrAlive <- response.ServerID
-			//en tanke var at tjekke om channel er fuld/tom -> så er leader død
 		}
 	}
+
+	// If primary didn't get responses from every backup
+	if (requiredResponses != numberOfResponses) {
+		return error, nonRespondingReplica
+	}
+
+	// If primary did get responses from every backup
+	return nil, 0;
 }
 
 func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*proto.Response, error) {

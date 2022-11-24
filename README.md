@@ -23,8 +23,8 @@ Selve systemet:
 Ting som skal håndteres:
 - To beskeder bliver sendt samtidig
 - Vi får ikke noget 'ack' tilbage efter at have sendt besked
-- En node fejler -> så stopper vi med at sende opdateringer til den
-- Lederen fejler -> election
+- DONE - En node fejler -> så stopper vi med at sende opdateringer til den -
+- Lederen fejler -> election. evt skal clients tjekke dette
 
 
 Ekstra
