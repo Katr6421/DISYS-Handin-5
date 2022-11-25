@@ -14,163 +14,14 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// TimeAskClient is the client API for TimeAsk service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type TimeAskClient interface {
-	SendMessage(ctx context.Context, in *ClientPublishMessage, opts ...grpc.CallOption) (*ServerPublishMessageOk, error)
-	ConnectToServer(ctx context.Context, in *ClientConnectMessage, opts ...grpc.CallOption) (TimeAsk_ConnectToServerClient, error)
-}
-
-type timeAskClient struct {
-	cc grpc.ClientConnInterface
-}
-
-func NewTimeAskClient(cc grpc.ClientConnInterface) TimeAskClient {
-	return &timeAskClient{cc}
-}
-
-func (c *timeAskClient) SendMessage(ctx context.Context, in *ClientPublishMessage, opts ...grpc.CallOption) (*ServerPublishMessageOk, error) {
-	out := new(ServerPublishMessageOk)
-	err := c.cc.Invoke(ctx, "/simpleGuide.TimeAsk/SendMessage", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *timeAskClient) ConnectToServer(ctx context.Context, in *ClientConnectMessage, opts ...grpc.CallOption) (TimeAsk_ConnectToServerClient, error) {
-	stream, err := c.cc.NewStream(ctx, &TimeAsk_ServiceDesc.Streams[0], "/simpleGuide.TimeAsk/ConnectToServer", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &timeAskConnectToServerClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type TimeAsk_ConnectToServerClient interface {
-	Recv() (*MessageStreamConnection, error)
-	grpc.ClientStream
-}
-
-type timeAskConnectToServerClient struct {
-	grpc.ClientStream
-}
-
-func (x *timeAskConnectToServerClient) Recv() (*MessageStreamConnection, error) {
-	m := new(MessageStreamConnection)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-// TimeAskServer is the server API for TimeAsk service.
-// All implementations must embed UnimplementedTimeAskServer
-// for forward compatibility
-type TimeAskServer interface {
-	SendMessage(context.Context, *ClientPublishMessage) (*ServerPublishMessageOk, error)
-	ConnectToServer(*ClientConnectMessage, TimeAsk_ConnectToServerServer) error
-	mustEmbedUnimplementedTimeAskServer()
-}
-
-// UnimplementedTimeAskServer must be embedded to have forward compatible implementations.
-type UnimplementedTimeAskServer struct {
-}
-
-func (UnimplementedTimeAskServer) SendMessage(context.Context, *ClientPublishMessage) (*ServerPublishMessageOk, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SendMessage not implemented")
-}
-func (UnimplementedTimeAskServer) ConnectToServer(*ClientConnectMessage, TimeAsk_ConnectToServerServer) error {
-	return status.Errorf(codes.Unimplemented, "method ConnectToServer not implemented")
-}
-func (UnimplementedTimeAskServer) mustEmbedUnimplementedTimeAskServer() {}
-
-// UnsafeTimeAskServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to TimeAskServer will
-// result in compilation errors.
-type UnsafeTimeAskServer interface {
-	mustEmbedUnimplementedTimeAskServer()
-}
-
-func RegisterTimeAskServer(s grpc.ServiceRegistrar, srv TimeAskServer) {
-	s.RegisterService(&TimeAsk_ServiceDesc, srv)
-}
-
-func _TimeAsk_SendMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ClientPublishMessage)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TimeAskServer).SendMessage(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/simpleGuide.TimeAsk/SendMessage",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TimeAskServer).SendMessage(ctx, req.(*ClientPublishMessage))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _TimeAsk_ConnectToServer_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(ClientConnectMessage)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(TimeAskServer).ConnectToServer(m, &timeAskConnectToServerServer{stream})
-}
-
-type TimeAsk_ConnectToServerServer interface {
-	Send(*MessageStreamConnection) error
-	grpc.ServerStream
-}
-
-type timeAskConnectToServerServer struct {
-	grpc.ServerStream
-}
-
-func (x *timeAskConnectToServerServer) Send(m *MessageStreamConnection) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-// TimeAsk_ServiceDesc is the grpc.ServiceDesc for TimeAsk service.
-// It's only intended for direct use with grpc.RegisterService,
-// and not to be introspected or modified (even as a copy)
-var TimeAsk_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "simpleGuide.TimeAsk",
-	HandlerType: (*TimeAskServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "SendMessage",
-			Handler:    _TimeAsk_SendMessage_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "ConnectToServer",
-			Handler:       _TimeAsk_ConnectToServer_Handler,
-			ServerStreams: true,
-		},
-	},
-	Metadata: "grpc/proto.proto",
-}
-
 // AuctionClient is the client API for Auction service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuctionClient interface {
-	Bid(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*ConfirmationOfBid, error)
-	Result(ctx context.Context, in *Request, opts ...grpc.CallOption) (*AuctionStatus, error)
-	Heartbeat(ctx context.Context, in *SendHeartbeat, opts ...grpc.CallOption) (*Response, error)
+	Bid(ctx context.Context, in *BidAmount, opts ...grpc.CallOption) (*ConfirmationOfBid, error)
+	Result(ctx context.Context, in *RequestStatus, opts ...grpc.CallOption) (*AuctionStatus, error)
+	UpdateBackup(ctx context.Context, in *AuctionUpdate, opts ...grpc.CallOption) (*ConfirmationOfUpdate, error)
+	Heartbeat(ctx context.Context, in *SendHeartbeat, opts ...grpc.CallOption) (*ResponseToHeartbeat, error)
 }
 
 type auctionClient struct {
@@ -181,7 +32,7 @@ func NewAuctionClient(cc grpc.ClientConnInterface) AuctionClient {
 	return &auctionClient{cc}
 }
 
-func (c *auctionClient) Bid(ctx context.Context, in *Amount, opts ...grpc.CallOption) (*ConfirmationOfBid, error) {
+func (c *auctionClient) Bid(ctx context.Context, in *BidAmount, opts ...grpc.CallOption) (*ConfirmationOfBid, error) {
 	out := new(ConfirmationOfBid)
 	err := c.cc.Invoke(ctx, "/simpleGuide.Auction/Bid", in, out, opts...)
 	if err != nil {
@@ -190,7 +41,7 @@ func (c *auctionClient) Bid(ctx context.Context, in *Amount, opts ...grpc.CallOp
 	return out, nil
 }
 
-func (c *auctionClient) Result(ctx context.Context, in *Request, opts ...grpc.CallOption) (*AuctionStatus, error) {
+func (c *auctionClient) Result(ctx context.Context, in *RequestStatus, opts ...grpc.CallOption) (*AuctionStatus, error) {
 	out := new(AuctionStatus)
 	err := c.cc.Invoke(ctx, "/simpleGuide.Auction/Result", in, out, opts...)
 	if err != nil {
@@ -199,8 +50,17 @@ func (c *auctionClient) Result(ctx context.Context, in *Request, opts ...grpc.Ca
 	return out, nil
 }
 
-func (c *auctionClient) Heartbeat(ctx context.Context, in *SendHeartbeat, opts ...grpc.CallOption) (*Response, error) {
-	out := new(Response)
+func (c *auctionClient) UpdateBackup(ctx context.Context, in *AuctionUpdate, opts ...grpc.CallOption) (*ConfirmationOfUpdate, error) {
+	out := new(ConfirmationOfUpdate)
+	err := c.cc.Invoke(ctx, "/simpleGuide.Auction/UpdateBackup", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *auctionClient) Heartbeat(ctx context.Context, in *SendHeartbeat, opts ...grpc.CallOption) (*ResponseToHeartbeat, error) {
+	out := new(ResponseToHeartbeat)
 	err := c.cc.Invoke(ctx, "/simpleGuide.Auction/Heartbeat", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -212,9 +72,10 @@ func (c *auctionClient) Heartbeat(ctx context.Context, in *SendHeartbeat, opts .
 // All implementations must embed UnimplementedAuctionServer
 // for forward compatibility
 type AuctionServer interface {
-	Bid(context.Context, *Amount) (*ConfirmationOfBid, error)
-	Result(context.Context, *Request) (*AuctionStatus, error)
-	Heartbeat(context.Context, *SendHeartbeat) (*Response, error)
+	Bid(context.Context, *BidAmount) (*ConfirmationOfBid, error)
+	Result(context.Context, *RequestStatus) (*AuctionStatus, error)
+	UpdateBackup(context.Context, *AuctionUpdate) (*ConfirmationOfUpdate, error)
+	Heartbeat(context.Context, *SendHeartbeat) (*ResponseToHeartbeat, error)
 	mustEmbedUnimplementedAuctionServer()
 }
 
@@ -222,13 +83,16 @@ type AuctionServer interface {
 type UnimplementedAuctionServer struct {
 }
 
-func (UnimplementedAuctionServer) Bid(context.Context, *Amount) (*ConfirmationOfBid, error) {
+func (UnimplementedAuctionServer) Bid(context.Context, *BidAmount) (*ConfirmationOfBid, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Bid not implemented")
 }
-func (UnimplementedAuctionServer) Result(context.Context, *Request) (*AuctionStatus, error) {
+func (UnimplementedAuctionServer) Result(context.Context, *RequestStatus) (*AuctionStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
 }
-func (UnimplementedAuctionServer) Heartbeat(context.Context, *SendHeartbeat) (*Response, error) {
+func (UnimplementedAuctionServer) UpdateBackup(context.Context, *AuctionUpdate) (*ConfirmationOfUpdate, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateBackup not implemented")
+}
+func (UnimplementedAuctionServer) Heartbeat(context.Context, *SendHeartbeat) (*ResponseToHeartbeat, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Heartbeat not implemented")
 }
 func (UnimplementedAuctionServer) mustEmbedUnimplementedAuctionServer() {}
@@ -245,7 +109,7 @@ func RegisterAuctionServer(s grpc.ServiceRegistrar, srv AuctionServer) {
 }
 
 func _Auction_Bid_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Amount)
+	in := new(BidAmount)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -257,13 +121,13 @@ func _Auction_Bid_Handler(srv interface{}, ctx context.Context, dec func(interfa
 		FullMethod: "/simpleGuide.Auction/Bid",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServer).Bid(ctx, req.(*Amount))
+		return srv.(AuctionServer).Bid(ctx, req.(*BidAmount))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Auction_Result_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Request)
+	in := new(RequestStatus)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -275,7 +139,25 @@ func _Auction_Result_Handler(srv interface{}, ctx context.Context, dec func(inte
 		FullMethod: "/simpleGuide.Auction/Result",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuctionServer).Result(ctx, req.(*Request))
+		return srv.(AuctionServer).Result(ctx, req.(*RequestStatus))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Auction_UpdateBackup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuctionUpdate)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuctionServer).UpdateBackup(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/simpleGuide.Auction/UpdateBackup",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuctionServer).UpdateBackup(ctx, req.(*AuctionUpdate))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -312,6 +194,10 @@ var Auction_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Result",
 			Handler:    _Auction_Result_Handler,
+		},
+		{
+			MethodName: "UpdateBackup",
+			Handler:    _Auction_UpdateBackup_Handler,
 		},
 		{
 			MethodName: "Heartbeat",

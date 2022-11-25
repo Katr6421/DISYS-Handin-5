@@ -27,7 +27,7 @@ var (
 
 func main() {
 	// Log to custom file
-	LOG_FILE := "../custom.log"
+	LOG_FILE := "../log.log"
 	// Open log file - or create it, if it doesn't exist
 	logFile, err := os.OpenFile(LOG_FILE, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -48,49 +48,73 @@ func main() {
 	
 	// Create a client
 	client := &Client{
-		id:         1,
+		id:         1, //skal være p.id
 		name:       *name,
 	}
 
+	serverConnection, _ := connectToServer(client)
 
-	go waitForBid(client)
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan(){
+		input := scanner.Text()
+
+		// If client wants to know status of the auction
+		if (input == "status"){
+			go client.requestStatus(serverConnection)
+		}
+		
+		// If client wants to make a bid
+		if (input != "status"){
+
+			bid, err := strconv.Atoi(input)
+
+			// If client inputted text instead of a number (unvalid bid)
+			if err != nil {
+				log.Printf("%v is not a valid input. Please write a number", input)
+			}
+
+			// If client inputted a number (valid bid)
+			if err == nil {
+				go client.makeABid(bid, serverConnection)
+			}
+		}
+	}
 
 	for{
 
 	}
-
 }
 
-func waitForBid(client *Client){
-	serverConnection, _ := connectToServer(client)
+func (client *Client) makeABid (bid int, serverConnection proto.AuctionClient) {
 
-	// Wait for bid in the client terminal
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		input := scanner.Text()
+	log.Printf("Client %d wants to make a bid: %v kr\n", client.id, bid)
 
-		// Check if inout is an integer and convert
-		bid, err := strconv.Atoi(input)
-		if err != nil {
-			log.Printf("%v is not a valid input. Please write a number", input)
-		}
-		if err == nil {
-		log.Printf("Client %d made bid: %v\n", client.id, input)
+	bidReturnMessage, err := serverConnection.Bid(context.Background(), &proto.BidAmount{
+		ClientId: int32(client.id),
+		Bid: 	  int32(bid),
+	})
 
-		// Ask the server for the time
-		bidReturnMessage, err := serverConnection.Bid(context.Background(), &proto.Amount{
-			ClientId: int32(client.id),
-			Bid: 	  int32(bid),
-		})
-
-		if err != nil {
-			log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges
-		} else {
-			log.Printf("Server %v confirms with message: %s\n", bidReturnMessage.ServerId, bidReturnMessage.ConfirmationMsg)
-		}
+	if err != nil {
+		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges
+	} else {
+		log.Printf("Server %v confirms bid with message: %s\n", bidReturnMessage.ServerId, bidReturnMessage.ConfirmationMsg)
 	}
-	}
+}
 
+
+func (client *Client) requestStatus(serverConnection proto.AuctionClient){
+
+	requestStatusMessage, err := serverConnection.Result(context.Background(), &proto.RequestStatus{
+		ClientId: int32(client.id),
+		Msg: 	  "Hey server what's up",
+	})
+
+	if err != nil {
+		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges
+	} else {
+		// Got response 
+		log.Printf("Client %d got response from server %d. Message: %v", client.id, requestStatusMessage.ServerId, requestStatusMessage.StatusMsg)
+	}
 }
 
 

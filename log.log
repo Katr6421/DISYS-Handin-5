@@ -1,0 +1,71 @@
+2022/11/25 16:14:24 server.go:103: Started server at port: 8080
+2022/11/25 16:14:34 server.go:103: Started server at port: 8081
+2022/11/25 16:14:34 server.go:133: Connected to server: 8080
+2022/11/25 16:14:34 server.go:133: Connected to server: 8081
+2022/11/25 16:14:43 server.go:103: Started server at port: 8082
+2022/11/25 16:14:43 server.go:133: Connected to server: 8080
+2022/11/25 16:14:43 server.go:133: Connected to server: 8081
+2022/11/25 16:14:43 server.go:133: Connected to server: 8082
+2022/11/25 16:14:43 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:14:43 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:14:43 server.go:228: Backup replica 8082 sends ack to heartbeat
+2022/11/25 16:14:45 server.go:133: Connected to server: 8082
+2022/11/25 16:14:53 client.go:127: Client 1 connected to the server at port 8080
+2022/11/25 16:14:58 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:14:58 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:14:58 server.go:228: Backup replica 8082 sends ack to heartbeat
+2022/11/25 16:15:10 client.go:90: Client 1 wants to make a bid: 35 kr
+2022/11/25 16:15:10 server.go:238: Client with ID 1 made bid: 35 kr
+2022/11/25 16:15:10 server.go:305: Backup replica 8081 has updated its auction information
+2022/11/25 16:15:10 server.go:305: Backup replica 8082 has updated its auction information
+2022/11/25 16:15:10 server.go:272: Client 1 now has highest bid of 35 kr
+2022/11/25 16:15:10 client.go:100: Server 8080 confirms bid with message: Accepted
+2022/11/25 16:15:13 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:15:13 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:15:13 server.go:228: Backup replica 8082 sends ack to heartbeat
+2022/11/25 16:15:23 client.go:90: Client 1 wants to make a bid: 23 kr
+2022/11/25 16:15:23 server.go:238: Client with ID 1 made bid: 23 kr
+2022/11/25 16:15:23 server.go:285: Client 1 bid 23 kr, but it was not higher than the current highest bid of 35 kr
+2022/11/25 16:15:23 client.go:100: Server 8080 confirms bid with message: Rejected
+2022/11/25 16:15:28 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:15:28 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:15:28 server.go:228: Backup replica 8082 sends ack to heartbeat
+2022/11/25 16:15:43 client.go:90: Client 1 wants to make a bid: 57 kr
+2022/11/25 16:15:43 server.go:238: Client with ID 1 made bid: 57 kr
+2022/11/25 16:15:43 server.go:305: Backup replica 8081 has updated its auction information
+2022/11/25 16:15:43 server.go:305: Backup replica 8082 has updated its auction information
+2022/11/25 16:15:43 server.go:272: Client 1 now has highest bid of 57 kr
+2022/11/25 16:15:43 client.go:100: Server 8080 confirms bid with message: Accepted
+2022/11/25 16:15:43 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:15:43 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:15:43 server.go:228: Backup replica 8082 sends ack to heartbeat
+2022/11/25 16:15:58 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:15:58 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:16:15 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:16:15 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:16:25 client.go:90: Client 1 wants to make a bid: 677 kr
+2022/11/25 16:16:25 server.go:238: Client with ID 1 made bid: 677 kr
+2022/11/25 16:16:25 server.go:305: Backup replica 8081 has updated its auction information
+2022/11/25 16:16:27 server.go:261: Couldn't update backup replica 8082. This backup replica will be removed
+2022/11/25 16:16:27 server.go:272: Client 1 now has highest bid of 677 kr
+2022/11/25 16:16:27 client.go:100: Server 8080 confirms bid with message: Accepted
+2022/11/25 16:16:32 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:16:32 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:16:39 client.go:90: Client 1 wants to make a bid: 66765 kr
+2022/11/25 16:16:39 server.go:238: Client with ID 1 made bid: 66765 kr
+2022/11/25 16:16:39 server.go:305: Backup replica 8081 has updated its auction information
+2022/11/25 16:16:39 server.go:272: Client 1 now has highest bid of 66765 kr
+2022/11/25 16:16:39 client.go:100: Server 8080 confirms bid with message: Accepted
+2022/11/25 16:16:47 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:16:47 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:16:50 server.go:319: Client 1 asked what the status of the auction is
+2022/11/25 16:16:50 client.go:116: Client 1 got response from server 8080. Message: Status of action: Auction is still open. Current highest bid is 66765 kr by client 1
+2022/11/25 16:17:02 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:17:02 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:17:17 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:17:17 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:17:23 server.go:103: Started server at port: 8082
+2022/11/25 16:17:23 server.go:133: Connected to server: 8080
+2022/11/25 16:17:23 server.go:133: Connected to server: 8081
+2022/11/25 16:17:32 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:17:32 server.go:228: Backup replica 8081 sends ack to heartbeat
