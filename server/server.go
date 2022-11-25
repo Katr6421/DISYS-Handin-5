@@ -4,8 +4,6 @@ import (
 	"context"
 	"strings"
 	"time"
-
-	//"database/sql/driver"
 	"flag"
 	"fmt"
 	"log"
@@ -13,8 +11,8 @@ import (
 	"os"
 	proto "simpleGuide/grpc"
 	"strconv"
-
 	"google.golang.org/grpc"
+	"sync"
 )
 
 type Auction struct{
@@ -47,8 +45,8 @@ type Server struct {
 
 // Sets the serverport to 5454
 var port = flag.Int("port", 5454, "server port number")
-
-var Leader int
+var mu sync.Mutex
+//var Leader int
 
 func main() {
 	// Log to custom file
@@ -163,7 +161,7 @@ func startServer(server *Server, ownPort int32) {
 
 	if server.id == 8080 {
 		server.isLeader = true // Primary replica is 8080 by default 
-		Leader = 8080
+		//Leader = 8080
 	}
 
 	if server.isLeader {
@@ -267,8 +265,8 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 	if (!s.auctionInfo.auctionFinished){
 		// If bid is highest
 		if (amount.Bid > s.auctionInfo.highestBid){
-
-			//lock???
+			
+			mu.Lock() //Lock so changes cannot be made before every replica is updated
 
 			// Update own auction
 			s.auctionInfo.highestBid = amount.Bid
@@ -295,6 +293,8 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 				if err == nil {
 					//log.Printf("Backup replica %d responded to update request", id)
 				}
+
+				defer mu.Unlock()
 			}
 			
 			// Print
@@ -305,6 +305,7 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 				ServerId: 	s.id, 
 				ConfirmationMsg:  "Accepted",
 			}, nil
+
 		}
 
 		// If bid is not higher
