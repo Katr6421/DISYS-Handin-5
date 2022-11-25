@@ -28,45 +28,32 @@ To start a client, open a new terminal from the client directory and write:
 You can open as many clients as you wish 
 
 ## Auction
-* The auction is open 5 minutes from the first server is started.
+* The auction is open for 5 minutes from the first server is started.
 * Clients can make bids by writing a number in their terminal
 * Clients can request the status of the aution by writing "status" in the terminal
 
 ## Log
 All operations in the program will be logged in the file called `log.log`
 
-
-
-
-
-
 ## Notes
-Client-Server struktur (gRPC)
+Client-Server struktur (gRPC) men hvor serverne bruger peer-to-peer
+
+Generelt: 
+- Auction slutter 5 minutter efter leader replica er lavet
+- Der sendes heartbeat hvert 15. sekund
 
 Passive Replication
 - Single leader
+- Sender heartbeat hvert 15 sekunder og smider de backups ud, der ikke svarer
+- Opdaterer backups hver gang der sker ændringer i auktionen
 
+Crash af backup replica
+* En backup replica fjernes hvis den: 
++ Ikke svarer på heartbeat
++ Ikke svarer på update
 
-Have flere servere som back-up.
-Skal kunne håndtere mindst et crash af en node
-- skal vi kunne håndtere crash af leader server?
-- hvis ja, brug election algoritme - vælge den med opdateret data og højest id
+MANGLER: 
+- Crash af leader. Tænker det opdages når client prøver at sende en besked, og så vælges der en ny leder 
+- To beskeder bliver sendt samtidig (lamport?)
+- Sequential Consistency
 
-
-Selve systemet:
-- Bid og Result metode
-- Auction skal slutte på et tidspunkt og returnere højeste Bid
-- Brug Lamport timestamp (Sequential Consistency) til at bestemme orden af beskeder (Bids, Result)
-- Alle replicas skal opdateres
-- Sende 'heartbeat' ud fra leader til replicas, så de kan følge med om leader er død eller ikke
-  - Vi tager ikke højde for hvis en client har sendt en besked lige før replicas har opdaget at leaderen er død
-
-Ting som skal håndteres:
-- To beskeder bliver sendt samtidig
-- Vi får ikke noget 'ack' tilbage efter at have sendt besked
-- DONE - En node fejler -> så stopper vi med at sende opdateringer til den -
-- Lederen fejler -> election. evt skal clients tjekke dette
-
-
-Ekstra
-- håndtere en ny server kommer efter der er lavet bids
