@@ -11,18 +11,18 @@ In terminal 1 write:
 
 In terminal 2 write: 
   ```sh
-   go run . 0 
+   go run . 1 
   ``` 
 
 In terminal 3 write: 
   ```sh
-    go run . 0  
+    go run . 2  
   ```
 
 
 To start a client, open a new terminal from the client directory and write: 
   ```sh
-    go run . 0  
+    go run .  
   ```
 
 You can open as many clients as you wish 
