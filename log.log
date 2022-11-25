@@ -69,3 +69,11 @@
 2022/11/25 16:17:23 server.go:133: Connected to server: 8081
 2022/11/25 16:17:32 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
 2022/11/25 16:17:32 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:17:47 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:17:47 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:18:02 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:18:02 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:18:17 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:18:17 server.go:228: Backup replica 8081 sends ack to heartbeat
+2022/11/25 16:18:32 server.go:192:  !!! Primary replica 8080 sends heartbeat to all backup replicas !!!
+2022/11/25 16:18:32 server.go:228: Backup replica 8081 sends ack to heartbeat
