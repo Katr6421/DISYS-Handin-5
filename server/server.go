@@ -267,6 +267,7 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 		if (amount.Bid > s.auctionInfo.highestBid){
 			
 			mu.Lock() //Lock so changes cannot be made before every replica is updated
+			defer mu.Unlock()
 
 			// Update own auction
 			s.auctionInfo.highestBid = amount.Bid
@@ -294,7 +295,6 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 					//log.Printf("Backup replica %d responded to update request", id)
 				}
 
-				defer mu.Unlock()
 			}
 			
 			// Print
