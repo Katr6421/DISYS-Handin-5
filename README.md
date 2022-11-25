@@ -27,6 +27,11 @@ To start a client, open a new terminal from the client directory and write:
 
 You can open as many clients as you wish 
 
+## Auction
+* The auction is open 5 minutes from the first server is started.
+* Clients can make bids by writing a number in their terminal
+* Clients can request the status of the aution by writing "status" in the terminal
+
 ## Log
 All operations in the program will be logged in the file called `log.log`
 

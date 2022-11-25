@@ -87,6 +87,34 @@ func main() {
 	// Start the server
 	go startServer(server, ownPort)
 
+	// End auction after 5 minutes
+	time.Sleep(5 * time.Minute)  
+
+	// Leader ends auction
+	if server.isLeader{
+		server.auctionInfo.auctionFinished = true
+		
+		// Update the other replicas to know auction is finished
+		Update := &proto.AuctionUpdate{
+			ServerId: 			server.id,
+			HighestBid: 		server.auctionInfo.highestBid,
+			HiggestBidderId: 	server.auctionInfo.highestBidderId,
+			AuctionStatus: 		false,
+		}
+
+		for id, backupServer := range server.servers{
+			_, err := backupServer.UpdateBackup(server.ctx, Update) 
+
+			// If UpdateBackup() returns an error, the backup replica didn't respond
+			if err != nil {
+				log.Printf("Couldn't update backup replica %d. This backup replica will be removed", id)
+				delete(server.servers, id) // Removes non-responding replica from map of connected servers
+			}
+		}
+	
+	log.Printf("Auction is finished. Winner was %d with a bid of %d kr", server.auctionInfo.highestBidderId, server.auctionInfo.highestBid)
+	}
+
 	// Keep the server running until it is manually quit
 	for {
 
@@ -140,7 +168,7 @@ func startServer(server *Server, ownPort int32) {
 
 	if server.isLeader {
 		for {
-			err, failingServerId := server.SendingHeartbeat()
+			failingServerId, err := server.SendingHeartbeat()
 
 			// If SendingHeartbeat returns an error, it means one of the backup replicas didn't respond
 			if err != nil{
@@ -178,7 +206,7 @@ func startServer(server *Server, ownPort int32) {
 
 
 //// METHODS REGARDING HEARTBEAT
-func (s *Server) SendingHeartbeat() (Error error, failingServerId int32) {
+func (s *Server) SendingHeartbeat() (failingServerId int32, Error error) {
 
 	var requiredResponses int = 2; // Number of responses if all backups responds
 	var numberOfResponses int = 0; 
@@ -210,18 +238,17 @@ func (s *Server) SendingHeartbeat() (Error error, failingServerId int32) {
 
 	// If primary didn't get responses from every backup
 	if (requiredResponses != numberOfResponses) {
-		return error, nonRespondingReplica
+		return nonRespondingReplica, error
 	}
 
 	// If primary did get responses from every backup
-	return nil, 0;
+	return 0, nil;
 }
 
 func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*proto.ResponseToHeartbeat, error) {
 	//når de modtager et heartbeat
 
 	ack := &proto.ResponseToHeartbeat{
-		Ack:      1,
 		ServerId: s.id, //id på den backup server der svarer
 	}
 
@@ -233,68 +260,81 @@ func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*p
 
 //// METHODS REGARDING BIDDING
 func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.ConfirmationOfBid, error) {
-	// Det bør kun være lederen der får de her beskeder
-	
+
 	log.Printf("Client with ID %d made bid: %d kr\n", amount.ClientId, amount.Bid)
 	
-	// If bid is highest
-	if (amount.Bid > s.auctionInfo.highestBid){
+	// If auction is open
+	if (!s.auctionInfo.auctionFinished){
+		// If bid is highest
+		if (amount.Bid > s.auctionInfo.highestBid){
 
-		//lock???
+			//lock???
 
-		// Update own auction
-		s.auctionInfo.highestBid = amount.Bid
-		s.auctionInfo.highestBidderId = amount.ClientId
+			// Update own auction
+			s.auctionInfo.highestBid = amount.Bid
+			s.auctionInfo.highestBidderId = amount.ClientId
 
-		// Update the other replicas 
-		Update := &proto.AuctionUpdate{
-			ServerId: 			s.id,
-			HighestBid: 		amount.Bid,
-			HiggestBidderId: 	amount.ClientId,
-		}
-
-		for id, backupServer := range s.servers{
-			_, err := backupServer.UpdateBackup(s.ctx, Update) 
-
-			// If UpdateBackup() returns an error, the backup replica didn't respond
-			if err != nil {
-				log.Printf("Couldn't update backup replica %d. This backup replica will be removed", id)
-				delete(s.servers, id) // Removes non-responding replica from map of connected servers
+			// Update the other replicas 
+			Update := &proto.AuctionUpdate{
+				ServerId: 			s.id,
+				HighestBid: 		amount.Bid,
+				HiggestBidderId: 	amount.ClientId,
+				AuctionStatus:      s.auctionInfo.auctionFinished,
 			}
 
-			// Backup replica responded
-			if err == nil {
-				//log.Printf("Backup replica %d responded to update request", id)
-			}
-		}
-		 
-		// Print
-		log.Printf("Client %d now has highest bid of %d kr", amount.ClientId, amount.Bid)
+			for id, backupServer := range s.servers{
+				_, err := backupServer.UpdateBackup(s.ctx, Update) 
 
-		// Answer client
-		return &proto.ConfirmationOfBid{
-			ServerId: 	s.id, 
-			ConfirmationMsg:  "Accepted",
-		}, nil
+				// If UpdateBackup() returns an error, the backup replica didn't respond
+				if err != nil {
+					log.Printf("Couldn't update backup replica %d. This backup replica will be removed", id)
+					delete(s.servers, id) // Removes non-responding replica from map of connected servers
+				}
+
+				// Backup replica responded
+				if err == nil {
+					//log.Printf("Backup replica %d responded to update request", id)
+				}
+			}
+			
+			// Print
+			log.Printf("Client %d now has highest bid of %d kr", amount.ClientId, amount.Bid)
+
+			// Answer client
+			return &proto.ConfirmationOfBid{
+				ServerId: 	s.id, 
+				ConfirmationMsg:  "Accepted",
+			}, nil
+		}
+
+		// If bid is not higher
+		if (amount.Bid <= s.auctionInfo.highestBid){
+
+			// Print
+			log.Printf("Client %d bid %d kr, but it was not higher than the current highest bid of %d kr", amount.ClientId, amount.Bid, s.auctionInfo.highestBid)
+
+			//Answer client
+			return &proto.ConfirmationOfBid{
+				ServerId: 	s.id, 
+				ConfirmationMsg:  "Rejected",
+			}, nil
+		}
 	}
 
-	// If bid is not higher
-	if (amount.Bid <= s.auctionInfo.highestBid){
+	//If auction is closed 
+	if (s.auctionInfo.auctionFinished){
 
 		// Print
-		log.Printf("Client %d bid %d kr, but it was not higher than the current highest bid of %d kr", amount.ClientId, amount.Bid, s.auctionInfo.highestBid)
+		log.Printf("Client %d bid %d kr, but auction is closed", amount.ClientId, amount.Bid)
 
-		//Answer client
+		// Answer client
 		return &proto.ConfirmationOfBid{
 			ServerId: 	s.id, 
 			ConfirmationMsg:  "Rejected",
 		}, nil
 	}
 
-	// If client cannot connect to the leader, this method will return an error - find new leader
-
 	return nil, nil
-
 }
 
 func (s *Server) UpdateBackup(ctx context.Context, msg *proto.AuctionUpdate) (*proto.ConfirmationOfUpdate, error){	
@@ -306,7 +346,7 @@ func (s *Server) UpdateBackup(ctx context.Context, msg *proto.AuctionUpdate) (*p
 
 	// Send answer
 	ack := &proto.ConfirmationOfUpdate{
-		ServerId: s.id, //id på den backup server der svarer
+		ServerId: s.id, 
 	}
 
 	return ack, nil

@@ -21,7 +21,6 @@ type Client struct {
 
 // go run . -name Hannah. Command to connect to server via a chosen name.
 var (
-	name       = flag.String("name", "<name>", "Name of this participant")
 	serverPort = flag.Int("sPort", 8080, "server port number (should match the port used for the server)")
 )
 
@@ -48,8 +47,7 @@ func main() {
 	
 	// Create a client
 	client := &Client{
-		id:         1, //skal være p.id
-		name:       *name,
+		id:         os.Getpid(),
 	}
 
 	serverConnection, _ := connectToServer(client)
@@ -106,7 +104,6 @@ func (client *Client) requestStatus(serverConnection proto.AuctionClient){
 
 	requestStatusMessage, err := serverConnection.Result(context.Background(), &proto.RequestStatus{
 		ClientId: int32(client.id),
-		Msg: 	  "Hey server what's up",
 	})
 
 	if err != nil {

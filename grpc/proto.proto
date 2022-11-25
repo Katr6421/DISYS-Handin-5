@@ -7,10 +7,10 @@ package simpleGuide;
 option go_package = "grpc/proto";
 
 service Auction {
-  rpc Bid(BidAmount) returns (ConfirmationOfBid);
-  rpc Result(RequestStatus) returns (AuctionStatus);
-  rpc UpdateBackup(AuctionUpdate) returns (ConfirmationOfUpdate);
-  rpc Heartbeat(SendHeartbeat) returns (ResponseToHeartbeat);
+  rpc Bid(BidAmount) returns (ConfirmationOfBid); // client -> server
+  rpc Result(RequestStatus) returns (AuctionStatus); // client -> server
+  rpc UpdateBackup(AuctionUpdate) returns (ConfirmationOfUpdate); // primary server -> backup servers
+  rpc Heartbeat(SendHeartbeat) returns (ResponseToHeartbeat); // primary server -> backup servers
 }
 
 message BidAmount {
@@ -28,7 +28,6 @@ message ConfirmationOfBid {
 message RequestStatus {
   int32 ClientId = 1;
   //int32 LamportTimestamp = 2;
-  string msg = 2;
 }
 
 message AuctionStatus {
@@ -42,17 +41,17 @@ message SendHeartbeat {
 }
 
 message ResponseToHeartbeat {
-  int32 Ack = 1;
   int32 ServerId = 2;
 }
 
 message AuctionUpdate{
-  int32 ServerId = 1; //leader server
+  int32 ServerId = 1; 
   int32 HighestBid = 2; 
   int32 HiggestBidderId = 3; 
+  bool  AuctionStatus = 4; 
 }
 
 message ConfirmationOfUpdate{
-  int32 ServerId = 1; //Responding backup server
+  int32 ServerId = 1; 
 }
 
