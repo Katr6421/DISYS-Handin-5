@@ -19,7 +19,6 @@ type Client struct {
 	//stream           *proto.TimeAsk_ConnectToServerClient
 }
 
-// go run . -name Hannah. Command to connect to server via a chosen name.
 var (
 	serverPort = flag.Int("sPort", 8080, "server port number (should match the port used for the server)")
 )
@@ -93,9 +92,9 @@ func (client *Client) makeABid (bid int, serverConnection proto.AuctionClient) {
 	})
 
 	if err != nil {
-		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges
+		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges?
 	} else {
-		log.Printf("Server %v confirms bid with message: %s\n", bidReturnMessage.ServerId, bidReturnMessage.ConfirmationMsg)
+		log.Printf("Server %v answers bid with message: %s\n", bidReturnMessage.ServerId, bidReturnMessage.ConfirmationMsg)
 	}
 }
 
@@ -107,7 +106,7 @@ func (client *Client) requestStatus(serverConnection proto.AuctionClient){
 	})
 
 	if err != nil {
-		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges
+		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges?
 	} else {
 		// Got response 
 		log.Printf("Client %d got response from server %d. Message: %v", client.id, requestStatusMessage.ServerId, requestStatusMessage.StatusMsg)

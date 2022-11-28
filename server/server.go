@@ -17,7 +17,6 @@ import (
 
 type Auction struct{
 	highestBid 		int32
-	//bidders 	    []*int32
 	highestBidderId int32
 	auctionFinished bool	
 }
@@ -244,10 +243,10 @@ func (s *Server) SendingHeartbeat() (failingServerId int32, Error error) {
 }
 
 func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*proto.ResponseToHeartbeat, error) {
-	//når de modtager et heartbeat
+	// When the backups recieve a heartbeat from primary
 
 	ack := &proto.ResponseToHeartbeat{
-		ServerId: s.id, //id på den backup server der svarer
+		ServerId: s.id, 
 	}
 
 	log.Printf("Backup replica %d sends ack to heartbeat", s.id)
@@ -314,7 +313,7 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 			// Print
 			log.Printf("Client %d bid %d kr, but it was not higher than the current highest bid of %d kr", amount.ClientId, amount.Bid, s.auctionInfo.highestBid)
 
-			//Answer client
+			// Answer client
 			return &proto.ConfirmationOfBid{
 				ServerId: 	s.id, 
 				ConfirmationMsg:  "Rejected",
@@ -322,7 +321,7 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 		}
 	}
 
-	//If auction is closed 
+	// If auction is closed 
 	if (s.auctionInfo.auctionFinished){
 
 		// Print
