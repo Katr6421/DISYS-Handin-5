@@ -66,6 +66,7 @@ Crash af backup replica
 MANGLER:
 
 * Crash af leader. (enten timeout på at modtage heartbeat eller at det opdages når client prøver at sende en besked, og så vælges der en ny leder?)
+Måske en løsning: Når en client prøver at sende en besked, og lederen ikke svarer indenfor en hvis tid, bliver der automatisk returnet en fejl-besked "noget gik galt, prøv igen", Hvis dette sker, så skal der vælges en ny ledder. Det kan være sendheartbeat også den der svare med højeste id bliver leder.
 * To beskeder bliver sendt samtidig (lamport?), Sequential Consistency (er det fixet med lock??)
 
 HUSK I RAPPORTEN
