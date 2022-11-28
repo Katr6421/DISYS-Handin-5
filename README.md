@@ -38,7 +38,7 @@ You can open as many clients as you wish
 
 ## Log
 
-All operations in the program will be logged in the file called `log.log`
+The operations in the program will be logged in the file called `log.log`
 
 ## Notes
 
@@ -65,8 +65,8 @@ Crash af backup replica
 
 MANGLER:
 
-* Crash af leader. Tænker det opdages når client prøver at sende en besked, og så vælges der en ny leder
-* To beskeder bliver sendt samtidig (lamport?), Sequential Consistency
+* Crash af leader. (enten timeout på at modtage heartbeat eller at det opdages når client prøver at sende en besked, og så vælges der en ny leder?)
+* To beskeder bliver sendt samtidig (lamport?), Sequential Consistency (er det fixet med lock??)
 
 HUSK I RAPPORTEN
 
