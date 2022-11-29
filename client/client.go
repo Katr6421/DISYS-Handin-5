@@ -14,8 +14,8 @@ import (
 )
 
 type Client struct {
-	id               int
-	name 			 string
+	id   int
+	name string
 	//stream           *proto.TimeAsk_ConnectToServerClient
 }
 
@@ -32,36 +32,34 @@ func main() {
 		log.Panic(err)
 	}
 	defer logFile.Close()
-		
+
 	// Set log output
 	log.SetOutput(logFile)
 
 	// Log date-time and filename
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
-	
 
 	// Parse the flags to get the port for the client
 	flag.Parse()
 
-	
 	// Create a client
 	client := &Client{
-		id:         os.Getpid(),
+		id: os.Getpid(),
 	}
 
 	serverConnection, _ := connectToServer(client)
 
 	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan(){
+	for scanner.Scan() {
 		input := scanner.Text()
 
 		// If client wants to know status of the auction
-		if (input == "status"){
+		if input == "status" {
 			go client.requestStatus(serverConnection)
 		}
-		
+
 		// If client wants to make a bid
-		if (input != "status"){
+		if input != "status" {
 
 			bid, err := strconv.Atoi(input)
 
@@ -77,18 +75,18 @@ func main() {
 		}
 	}
 
-	for{
+	for {
 
 	}
 }
 
-func (client *Client) makeABid (bid int, serverConnection proto.AuctionClient) {
+func (client *Client) makeABid(bid int, serverConnection proto.AuctionClient) {
 
 	log.Printf("Client %d wants to make a bid: %v kr\n", client.id, bid)
 
 	bidReturnMessage, err := serverConnection.Bid(context.Background(), &proto.BidAmount{
 		ClientId: int32(client.id),
-		Bid: 	  int32(bid),
+		Bid:      int32(bid),
 	})
 
 	if err != nil {
@@ -98,8 +96,7 @@ func (client *Client) makeABid (bid int, serverConnection proto.AuctionClient) {
 	}
 }
 
-
-func (client *Client) requestStatus(serverConnection proto.AuctionClient){
+func (client *Client) requestStatus(serverConnection proto.AuctionClient) {
 
 	requestStatusMessage, err := serverConnection.Result(context.Background(), &proto.RequestStatus{
 		ClientId: int32(client.id),
@@ -112,7 +109,6 @@ func (client *Client) requestStatus(serverConnection proto.AuctionClient){
 		log.Printf("Client %d got response from server %d. Message: %v", client.id, requestStatusMessage.ServerId, requestStatusMessage.StatusMsg)
 	}
 }
-
 
 func connectToServer(client *Client) (proto.AuctionClient, error) {
 	// Dial the server at the specified port.

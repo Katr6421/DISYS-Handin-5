@@ -2,29 +2,29 @@ package main
 
 import (
 	"context"
-	"strings"
-	"time"
 	"flag"
 	"fmt"
+	"google.golang.org/grpc"
 	"log"
 	"net"
 	"os"
 	proto "simpleGuide/grpc"
 	"strconv"
-	"google.golang.org/grpc"
+	"strings"
 	"sync"
+	"time"
 )
 
-type Auction struct{
-	highestBid 		int32
+type Auction struct {
+	highestBid      int32
 	highestBidderId int32
-	auctionFinished bool	
+	auctionFinished bool
 }
 
 // Struct for the Server to store to keep track of the clients
 type ClientStream struct {
-	name     		string
-	clientID 		int32
+	name     string
+	clientID int32
 	//stream   		*proto.TimeAsk_ConnectToServerServer
 	//chQuit  		chan int
 }
@@ -37,7 +37,7 @@ type Server struct {
 	servers                          map[int32]proto.AuctionClient
 	ctx                              context.Context
 	isLeader                         bool
-	auctionInfo     				 *Auction
+	auctionInfo                      *Auction
 	//isDead                           bool
 	//chDeadOrAlive                    chan int32
 }
@@ -45,6 +45,7 @@ type Server struct {
 // Sets the serverport to 5454
 var port = flag.Int("port", 5454, "server port number")
 var mu sync.Mutex
+
 //var Leader int
 
 func main() {
@@ -63,7 +64,6 @@ func main() {
 	// Log date-time and filename
 	log.SetFlags(log.Lshortfile | log.LstdFlags)
 
-
 	// This parses the flag and sets the correct/given corresponding values.
 	//flag.Parse()
 
@@ -74,10 +74,10 @@ func main() {
 
 	// Create a server struct
 	server := &Server{
-		id:      	 ownPort,
-		clients: 	 []*ClientStream{},
-		servers: 	 make(map[int32]proto.AuctionClient),
-		ctx:     	 ctx,
+		id:          ownPort,
+		clients:     []*ClientStream{},
+		servers:     make(map[int32]proto.AuctionClient),
+		ctx:         ctx,
 		auctionInfo: new(Auction),
 	}
 
@@ -85,22 +85,22 @@ func main() {
 	go startServer(server, ownPort)
 
 	// End auction after 5 minutes
-	time.Sleep(5 * time.Minute)  
+	time.Sleep(5 * time.Minute)
 
 	// Leader ends auction
-	if server.isLeader{
+	if server.isLeader {
 		server.auctionInfo.auctionFinished = true
-		
+
 		// Update the other replicas to know auction is finished
 		Update := &proto.AuctionUpdate{
-			ServerId: 			server.id,
-			HighestBid: 		server.auctionInfo.highestBid,
-			HiggestBidderId: 	server.auctionInfo.highestBidderId,
-			AuctionStatus: 		false,
+			ServerId:        server.id,
+			HighestBid:      server.auctionInfo.highestBid,
+			HiggestBidderId: server.auctionInfo.highestBidderId,
+			AuctionStatus:   false,
 		}
 
-		for id, backupServer := range server.servers{
-			_, err := backupServer.UpdateBackup(server.ctx, Update) 
+		for id, backupServer := range server.servers {
+			_, err := backupServer.UpdateBackup(server.ctx, Update)
 
 			// If UpdateBackup() returns an error, the backup replica didn't respond
 			if err != nil {
@@ -108,8 +108,8 @@ func main() {
 				delete(server.servers, id) // Removes non-responding replica from map of connected servers
 			}
 		}
-	
-	log.Printf("Auction is finished. Winner was %d with a bid of %d kr", server.auctionInfo.highestBidderId, server.auctionInfo.highestBid)
+
+		log.Printf("Auction is finished. Winner was %d with a bid of %d kr", server.auctionInfo.highestBidderId, server.auctionInfo.highestBid)
 	}
 
 	// Keep the server running until it is manually quit
@@ -168,30 +168,28 @@ func startServer(server *Server, ownPort int32) {
 			failingServerId, err := server.SendingHeartbeat()
 
 			// If SendingHeartbeat returns an error, it means one of the backup replicas didn't respond
-			if err != nil{
+			if err != nil {
 				log.Printf("Primary replica didn't get a heartbeat-response from backup replica %d. This backup replica will be removed", failingServerId)
 				delete(server.servers, failingServerId) // Removes non-responding replica from map of connected servers
 			}
 
-			time.Sleep(15 * time.Second)  
-
+			time.Sleep(15 * time.Second)
 
 			//tjekker channel
 			//if len(server.chDeadOrAlive) == len(server.servers) {
-				//leaderen er død
-				//elect ny leader
+			//leaderen er død
+			//elect ny leader
 			//}
 
 		}
 	}
 
-
 	//if !server.isLeader {
 	//	time.Sleep(30 * time.Second)
 	////	log.Printf("hej")
-		//if bipbip.isDead == true {
-		//election
-		//}
+	//if bipbip.isDead == true {
+	//election
+	//}
 
 	//}
 	//server på index 0 - kalder Heartbeat for X sek
@@ -201,70 +199,67 @@ func startServer(server *Server, ownPort int32) {
 
 }
 
-
 //// METHODS REGARDING HEARTBEAT
 func (s *Server) SendingHeartbeat() (failingServerId int32, Error error) {
 
-	var requiredResponses int = 2; // Number of responses if all backups responds
-	var numberOfResponses int = 0; 
-	var nonRespondingReplica int32 = 0; 
-	var error error = nil; 
+	var requiredResponses int = 2 // Number of responses if all backups responds
+	var numberOfResponses int = 0
+	var nonRespondingReplica int32 = 0
+	var error error = nil
 
 	BipBip := &proto.SendHeartbeat{
 		ServerId: s.id,
 	}
 
 	log.Printf(" !!! Primary replica %d sends heartbeat to all backup replicas !!!", s.id)
-	
+
 	for id, server := range s.servers {
-		_, err := server.Heartbeat(s.ctx, BipBip) 
+		_, err := server.Heartbeat(s.ctx, BipBip)
 
 		// If Heartbeat() returns an error, the backup replica didn't respond
 		if err != nil {
-			error = err; 
-			nonRespondingReplica = id; 
-			requiredResponses--; // Non-responding replica will be removed, so required responses is one lower
+			error = err
+			nonRespondingReplica = id
+			requiredResponses-- // Non-responding replica will be removed, so required responses is one lower
 		}
 
 		// Backup replica responded
 		if err == nil {
-		numberOfResponses++;
-		//log.Printf("Primary replica %d got the response: %d from backup replica %d", s.id, response.Ack, response.ServerId)
+			numberOfResponses++
+			//log.Printf("Primary replica %d got the response: %d from backup replica %d", s.id, response.Ack, response.ServerId)
 		}
 	}
 
 	// If primary didn't get responses from every backup
-	if (requiredResponses != numberOfResponses) {
+	if requiredResponses != numberOfResponses {
 		return nonRespondingReplica, error
 	}
 
 	// If primary did get responses from every backup
-	return 0, nil;
+	return 0, nil
 }
 
 func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*proto.ResponseToHeartbeat, error) {
 	// When the backups recieve a heartbeat from primary
 
 	ack := &proto.ResponseToHeartbeat{
-		ServerId: s.id, 
+		ServerId: s.id,
 	}
 
 	log.Printf("Backup replica %d sends ack to heartbeat", s.id)
 	return ack, nil
 }
 
-
-
 //// METHODS REGARDING BIDDING
 func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.ConfirmationOfBid, error) {
 
 	log.Printf("Client with ID %d made bid: %d kr\n", amount.ClientId, amount.Bid)
-	
+
 	// If auction is open
-	if (!s.auctionInfo.auctionFinished){
+	if !s.auctionInfo.auctionFinished {
 		// If bid is highest
-		if (amount.Bid > s.auctionInfo.highestBid){
-			
+		if amount.Bid > s.auctionInfo.highestBid {
+
 			mu.Lock() //Lock so changes cannot be made before every replica is updated
 			defer mu.Unlock()
 
@@ -274,14 +269,14 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 
 			// Update the other replicas 
 			Update := &proto.AuctionUpdate{
-				ServerId: 			s.id,
-				HighestBid: 		amount.Bid,
-				HiggestBidderId: 	amount.ClientId,
-				AuctionStatus:      s.auctionInfo.auctionFinished,
+				ServerId:        s.id,
+				HighestBid:      amount.Bid,
+				HiggestBidderId: amount.ClientId,
+				AuctionStatus:   s.auctionInfo.auctionFinished,
 			}
 
-			for id, backupServer := range s.servers{
-				_, err := backupServer.UpdateBackup(s.ctx, Update) 
+			for id, backupServer := range s.servers {
+				_, err := backupServer.UpdateBackup(s.ctx, Update)
 
 				// If UpdateBackup() returns an error, the backup replica didn't respond
 				if err != nil {
@@ -295,63 +290,62 @@ func (s *Server) Bid(ctx context.Context, amount *proto.BidAmount) (*proto.Confi
 				}
 
 			}
-			
+
 			// Print
 			log.Printf("Client %d now has highest bid of %d kr", amount.ClientId, amount.Bid)
 
 			// Answer client
 			return &proto.ConfirmationOfBid{
-				ServerId: 	s.id, 
-				ConfirmationMsg:  "Accepted",
+				ServerId:        s.id,
+				ConfirmationMsg: "Accepted",
 			}, nil
 
 		}
 
 		// If bid is not higher
-		if (amount.Bid <= s.auctionInfo.highestBid){
+		if amount.Bid <= s.auctionInfo.highestBid {
 
 			// Print
 			log.Printf("Client %d bid %d kr, but it was not higher than the current highest bid of %d kr", amount.ClientId, amount.Bid, s.auctionInfo.highestBid)
 
 			// Answer client
 			return &proto.ConfirmationOfBid{
-				ServerId: 	s.id, 
-				ConfirmationMsg:  "Rejected",
+				ServerId:        s.id,
+				ConfirmationMsg: "Rejected",
 			}, nil
 		}
 	}
 
 	// If auction is closed 
-	if (s.auctionInfo.auctionFinished){
+	if s.auctionInfo.auctionFinished {
 
 		// Print
 		log.Printf("Client %d bid %d kr, but auction is closed", amount.ClientId, amount.Bid)
 
 		// Answer client
 		return &proto.ConfirmationOfBid{
-			ServerId: 	s.id, 
-			ConfirmationMsg:  "Rejected",
+			ServerId:        s.id,
+			ConfirmationMsg: "Rejected",
 		}, nil
 	}
 
 	return nil, nil
 }
 
-func (s *Server) UpdateBackup(ctx context.Context, msg *proto.AuctionUpdate) (*proto.ConfirmationOfUpdate, error){	
+func (s *Server) UpdateBackup(ctx context.Context, msg *proto.AuctionUpdate) (*proto.ConfirmationOfUpdate, error) {
 	// Update auctionInfo
-	s.auctionInfo.highestBid = msg.HighestBid;
+	s.auctionInfo.highestBid = msg.HighestBid
 	s.auctionInfo.highestBidderId = msg.HiggestBidderId
 
 	log.Printf("Backup replica %d has updated its auction information", s.id)
 
 	// Send answer
 	ack := &proto.ConfirmationOfUpdate{
-		ServerId: s.id, 
+		ServerId: s.id,
 	}
 
 	return ack, nil
 }
-
 
 //// METHODS REGARDING STATUS OF AUCTION
 func (s *Server) Result(ctx context.Context, request *proto.RequestStatus) (*proto.AuctionStatus, error) {
@@ -359,20 +353,20 @@ func (s *Server) Result(ctx context.Context, request *proto.RequestStatus) (*pro
 	log.Printf("Client %d asked what the status of the auction is", request.ClientId)
 
 	// Builds the status message depending on whether the auction is open or closed
-	builder := strings.Builder{}    
+	builder := strings.Builder{}
 	builder.WriteString("Status of action: ")
-	if s.auctionInfo.auctionFinished{
+	if s.auctionInfo.auctionFinished {
 		builder.WriteString(fmt.Sprintf("Auction is over. Winning bid was %d kr ", s.auctionInfo.highestBid))
-	}  
+	}
 	if !s.auctionInfo.auctionFinished {
 		builder.WriteString(fmt.Sprintf("Auction is still open. Current highest bid is %d kr ", s.auctionInfo.highestBid))
 	}
 	builder.WriteString(fmt.Sprintf("by client %d", s.auctionInfo.highestBidderId))
-    msg := builder.String() 
+	msg := builder.String()
 
 	// Send answer
 	response := &proto.AuctionStatus{
-		ServerId: s.id,
+		ServerId:  s.id,
 		StatusMsg: msg,
 	}
 
