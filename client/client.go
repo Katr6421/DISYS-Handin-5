@@ -16,7 +16,6 @@ import (
 type Client struct {
 	id   int
 	name string
-	//stream           *proto.TimeAsk_ConnectToServerClient
 }
 
 var (
@@ -90,7 +89,7 @@ func (client *Client) makeABid(bid int, serverConnection proto.AuctionClient) {
 	})
 
 	if err != nil {
-		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges?
+		log.Printf(err.Error()) // Here it should try to connect to a new server (the new leader)
 	} else {
 		log.Printf("Server %v answers bid with message: %s\n", bidReturnMessage.ServerId, bidReturnMessage.ConfirmationMsg)
 	}
@@ -103,7 +102,7 @@ func (client *Client) requestStatus(serverConnection proto.AuctionClient) {
 	})
 
 	if err != nil {
-		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges?
+		log.Printf(err.Error()) // Here it should try to connect to a new server (the new leader)
 	} else {
 		// Got response 
 		log.Printf("Client %d got response from server %d. Message: %v", client.id, requestStatusMessage.ServerId, requestStatusMessage.StatusMsg)

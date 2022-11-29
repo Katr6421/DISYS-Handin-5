@@ -21,25 +21,14 @@ type Auction struct {
 	auctionFinished bool
 }
 
-// Struct for the Server to store to keep track of the clients
-type ClientStream struct {
-	name     string
-	clientID int32
-	//stream   		*proto.TimeAsk_ConnectToServerServer
-	//chQuit  		chan int
-}
-
 // Struct that will be used to represent the Server.
 type Server struct {
 	proto.UnimplementedAuctionServer // Necessary
 	id                               int32
-	clients                          []*ClientStream
 	servers                          map[int32]proto.AuctionClient
 	ctx                              context.Context
 	isLeader                         bool
 	auctionInfo                      *Auction
-	//isDead                           bool
-	//chDeadOrAlive                    chan int32
 }
 
 // Sets the serverport to 5454
@@ -66,7 +55,6 @@ func main() {
 
 	// This parses the flag and sets the correct/given corresponding values.
 	//flag.Parse()
-
 	arg1, _ := strconv.ParseInt(os.Args[1], 10, 32)
 	ownPort := int32(arg1) + 8080
 	ctx, cancel := context.WithCancel(context.Background())
@@ -75,7 +63,6 @@ func main() {
 	// Create a server struct
 	server := &Server{
 		id:          ownPort,
-		clients:     []*ClientStream{},
 		servers:     make(map[int32]proto.AuctionClient),
 		ctx:         ctx,
 		auctionInfo: new(Auction),
@@ -160,7 +147,6 @@ func startServer(server *Server, ownPort int32) {
 
 	if server.id == 8080 {
 		server.isLeader = true // Primary replica is 8080 by default 
-		//Leader = 8080
 	}
 
 	if server.isLeader {
@@ -174,29 +160,8 @@ func startServer(server *Server, ownPort int32) {
 			}
 
 			time.Sleep(15 * time.Second)
-
-			//tjekker channel
-			//if len(server.chDeadOrAlive) == len(server.servers) {
-			//leaderen er død
-			//elect ny leader
-			//}
-
 		}
 	}
-
-	//if !server.isLeader {
-	//	time.Sleep(30 * time.Second)
-	////	log.Printf("hej")
-	//if bipbip.isDead == true {
-	//election
-	//}
-
-	//}
-	//server på index 0 - kalder Heartbeat for X sek
-	//servers på index 1++ - kalder Response hvert x sek
-	//sæt if statement på hvis de andre servers venter for længe -> vælg ny leader
-	////den nye leder er index 0+1 og resten er så fra index 1+1
-
 }
 
 //// METHODS REGARDING HEARTBEAT
