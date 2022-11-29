@@ -11,6 +11,7 @@ service Auction {
   rpc Result(RequestStatus) returns (AuctionStatus); // client -> server
   rpc UpdateBackup(AuctionUpdate) returns (ConfirmationOfUpdate); // primary server -> backup servers
   rpc Heartbeat(SendHeartbeat) returns (ResponseToHeartbeat); // primary server -> backup servers
+  rpc SendID(IdRequest) returns (IdAnswer);
 }
 
 message BidAmount {
@@ -53,5 +54,13 @@ message AuctionUpdate{
 
 message ConfirmationOfUpdate{
   int32 ServerId = 1; 
+}
+
+message IdRequest{
+  int32 ClientId = 1; 
+}
+
+message IdAnswer{
+  int32 LeaderId = 1; 
 }
 

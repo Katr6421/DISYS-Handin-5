@@ -33,7 +33,7 @@ type ClientStream struct {
 type Server struct {
 	proto.UnimplementedAuctionServer // Necessary
 	id                               int32
-	clients                          []*ClientStream
+	//clients                          []*ClientStream
 	servers                          map[int32]proto.AuctionClient
 	ctx                              context.Context
 	isLeader                         bool
@@ -45,12 +45,17 @@ type Server struct {
 // Sets the serverport to 5454
 var port = flag.Int("port", 5454, "server port number")
 var mu sync.Mutex
+var requiredResponses int = 2 // Number of responses if all backups responds
+var numberOfResponses int = 0
+var nonRespondingReplica int32 = 0
+var lastRecivedHeartBeat time.Time
+var leaderId int32
 
 //var Leader int
 
 func main() {
 	// Log to custom file
-	LOG_FILE := "../log.log"
+	LOG_FILE := "../log2.log"
 	// Open log file - or create it, if it doesn't exist
 	logFile, err := os.OpenFile(LOG_FILE, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -75,19 +80,22 @@ func main() {
 	// Create a server struct
 	server := &Server{
 		id:          ownPort,
-		clients:     []*ClientStream{},
+		//clients:     []*ClientStream{},
 		servers:     make(map[int32]proto.AuctionClient),
 		ctx:         ctx,
 		auctionInfo: new(Auction),
+		isLeader: 	 false,
 	}
 
 	// Start the server
 	go startServer(server, ownPort)
 
+	
 	// End auction after 5 minutes
 	time.Sleep(5 * time.Minute)
 
-	// Leader ends auction
+
+	// If server is leader
 	if server.isLeader {
 		server.auctionInfo.auctionFinished = true
 
@@ -111,6 +119,7 @@ func main() {
 
 		log.Printf("Auction is finished. Winner was %d with a bid of %d kr", server.auctionInfo.highestBidderId, server.auctionInfo.highestBid)
 	}
+
 
 	// Keep the server running until it is manually quit
 	for {
@@ -158,53 +167,46 @@ func startServer(server *Server, ownPort int32) {
 		log.Printf("Connected to server: %v\n", port)
 	}
 
-	if server.id == 8080 {
-		server.isLeader = true // Primary replica is 8080 by default 
-		//Leader = 8080
+	leaderId = 8080
+	if (server.id == 8080){
+		server.isLeader = true
 	}
 
-	if server.isLeader {
+	lastRecivedHeartBeat = time.Now()
+
+	//If server is not leader
+	//Only backups checks if the leader is alive
+	if (!server.isLeader){
+		log.Println("Vi er her")
 		for {
-			failingServerId, err := server.SendingHeartbeat()
-
-			// If SendingHeartbeat returns an error, it means one of the backup replicas didn't respond
-			if err != nil {
-				log.Printf("Primary replica didn't get a heartbeat-response from backup replica %d. This backup replica will be removed", failingServerId)
-				delete(server.servers, failingServerId) // Removes non-responding replica from map of connected servers
-			}
-
-			time.Sleep(15 * time.Second)
-
-			//tjekker channel
-			//if len(server.chDeadOrAlive) == len(server.servers) {
-			//leaderen er død
-			//elect ny leader
-			//}
-
+			go server.waitForHeartbeat()
+			time.Sleep(20 * time.Second)
 		}
 	}
 
-	//if !server.isLeader {
-	//	time.Sleep(30 * time.Second)
-	////	log.Printf("hej")
-	//if bipbip.isDead == true {
-	//election
-	//}
-
-	//}
-	//server på index 0 - kalder Heartbeat for X sek
-	//servers på index 1++ - kalder Response hvert x sek
-	//sæt if statement på hvis de andre servers venter for længe -> vælg ny leader
-	////den nye leder er index 0+1 og resten er så fra index 1+1
+	if server.isLeader {
+		server.LeaderSendsHeartbeat()
+	}
 
 }
 
-//// METHODS REGARDING HEARTBEAT
-func (s *Server) SendingHeartbeat() (failingServerId int32, Error error) {
 
-	var requiredResponses int = 2 // Number of responses if all backups responds
-	var numberOfResponses int = 0
-	var nonRespondingReplica int32 = 0
+//// METHODS REGARDING HEARTBEAT
+func(s *Server) LeaderSendsHeartbeat(){
+	for {
+		failingServerId, err := s.SendingHeartbeat()
+
+		// If SendingHeartbeat returns an error, it means one of the backup replicas didn't respond
+		if err != nil {
+			log.Printf("Primary replica didn't get a heartbeat-response from backup replica %d. This backup replica will be removed", failingServerId)
+			delete(s.servers, failingServerId) // Removes non-responding replica from map of connected servers
+		}
+
+		time.Sleep(15 * time.Second)
+	}
+}
+
+func (s *Server) SendingHeartbeat() (failingServerId int32, Error error) {
 	var error error = nil
 
 	BipBip := &proto.SendHeartbeat{
@@ -236,12 +238,50 @@ func (s *Server) SendingHeartbeat() (failingServerId int32, Error error) {
 	}
 
 	// If primary did get responses from every backup
+	numberOfResponses = 0
 	return 0, nil
+}
+
+func (s *Server) waitForHeartbeat(){
+//Tjekke variblen lastRecivedHeartBeat
+	elapsed := time.Since(lastRecivedHeartBeat)
+
+	// 20 seconds
+	if (elapsed.Seconds() > 20){
+		log.Printf("%v time has passed without a heartbeat from the leader. Election will start to choose new leader", elapsed)
+		s.selectNewLeaderServer()
+	}
+}
+
+func (s *Server) selectNewLeaderServer(){
+	// Remove old leader
+	delete(s.servers, 8080)
+
+    // Selection the server with the highest id
+	highestID := s.id
+	for id, _ := range s.servers {
+       if id > highestID {
+			highestID = id
+	   }
+	}
+
+	if (highestID == s.id){ // If the server is the new leader
+		s.isLeader = true
+		leaderId = highestID
+		s.LeaderSendsHeartbeat()
+	}
+
+	log.Printf("The new leader is %d", highestID)
+	lastRecivedHeartBeat = time.Now()
+
 }
 
 func (s *Server) Heartbeat(ctx context.Context, bipbip *proto.SendHeartbeat) (*proto.ResponseToHeartbeat, error) {
 	// When the backups recieve a heartbeat from primary
 
+	// ændre lastRecieved variabel
+	lastRecivedHeartBeat = time.Now()
+	
 	ack := &proto.ResponseToHeartbeat{
 		ServerId: s.id,
 	}

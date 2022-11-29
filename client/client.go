@@ -11,6 +11,7 @@ import (
 	"os"
 	proto "simpleGuide/grpc"
 	"strconv"
+
 )
 
 type Client struct {
@@ -20,12 +21,13 @@ type Client struct {
 }
 
 var (
-	serverPort = flag.Int("sPort", 8080, "server port number (should match the port used for the server)")
+	leaderId int32 = 8080
+	serverPort = flag.Int("sPort", int(leaderId), "server port number (should match the port used for the server)")
 )
 
 func main() {
 	// Log to custom file
-	LOG_FILE := "../log.log"
+	LOG_FILE := "../log2.log"
 	// Open log file - or create it, if it doesn't exist
 	logFile, err := os.OpenFile(LOG_FILE, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
@@ -90,7 +92,23 @@ func (client *Client) makeABid(bid int, serverConnection proto.AuctionClient) {
 	})
 
 	if err != nil {
-		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges?
+		log.Printf("Cannot connect to leader, trying to connect to another server") // hvis client ikke får respons, skal ny leder vælges?
+
+		// Hvis 8080 er død, er 8082 den nye leader
+		leaderId = 8082
+		_, err := connectToServer(client)
+		if (err != nil){
+			// Hvis 8080 og 8082 er døde, er 8081 den nye leader
+			leaderId = 8081
+			_, err2 := connectToServer(client)
+			if (err2 != nil){
+				log.Printf("Can not connect to any server. They are all dead :(")
+			} else{
+				log.Printf("Client connected to server 8081")
+			}
+		} else {
+			log.Printf("Client connected to server 8082")
+		}
 	} else {
 		log.Printf("Server %v answers bid with message: %s\n", bidReturnMessage.ServerId, bidReturnMessage.ConfirmationMsg)
 	}
@@ -103,7 +121,21 @@ func (client *Client) requestStatus(serverConnection proto.AuctionClient) {
 	})
 
 	if err != nil {
-		log.Printf(err.Error()) // hvis client ikke får respons, skal ny leder vælges?
+			// Hvis 8080 er død, er 8082 den nye leader
+			leaderId = 8082
+			_, err := connectToServer(client)
+			if (err != nil){
+				// Hvis 8080 og 8082 er døde, er 8081 den nye leader
+				leaderId = 8081
+				_, err2 := connectToServer(client)
+				if (err2 != nil){
+					log.Printf("Can not connect to any server. They are all dead :(")
+				} else{
+					log.Printf("Client connected to server 8081")
+				}
+			} else {
+				log.Printf("Client connected to server 8082")
+			}
 	} else {
 		// Got response 
 		log.Printf("Client %d got response from server %d. Message: %v", client.id, requestStatusMessage.ServerId, requestStatusMessage.StatusMsg)
@@ -111,10 +143,12 @@ func (client *Client) requestStatus(serverConnection proto.AuctionClient) {
 }
 
 func connectToServer(client *Client) (proto.AuctionClient, error) {
+
 	// Dial the server at the specified port.
 	conn, err := grpc.Dial("localhost:"+strconv.Itoa(*serverPort), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Client %d could not connect to port %d", client.id, *serverPort)
+		return nil, err
 	} else {
 		log.Printf("Client %d connected to the server at port %d\n", client.id, *serverPort)
 	}
